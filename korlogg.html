@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Körlogg">
+<meta name="theme-color" content="#070F1E">
+<title>Körlogg</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-appearance:none}
+html,body{height:100%;width:100%;background:#070F1E;color:#E8F0FF;font-family:-apple-system,system-ui,sans-serif;overflow:hidden}
+::-webkit-scrollbar{display:none}
+#app{display:flex;flex-direction:column;height:100dvh;max-width:480px;margin:0 auto}
+.header{padding:48px 20px 12px;flex-shrink:0}
+.header-sub{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#6BAEFF}
+.header-title{font-size:28px;font-weight:800;margin-top:2px}
+.content{flex:1;overflow-y:auto;padding:0 16px 20px;-webkit-overflow-scrolling:touch}
+.nav{display:flex;background:#0D1B33;border-top:1px solid rgba(77,143,255,.12);padding:8px 0 10px;flex-shrink:0}
+.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:5px 0;background:none;border:none;color:#2D4A77;font-family:inherit;font-size:11px;font-weight:600;cursor:pointer}
+.nav-btn.active{color:#6BAEFF}
+.nav-icon{font-size:20px}
+.tab{display:none}
+.tab.active{display:block}
+
+/* Cards */
+.card{background:#0F1E38;border:1px solid rgba(77,143,255,.12);border-radius:16px;padding:16px;margin-bottom:12px}
+.field-label{display:block;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#4D6A99;margin-bottom:6px;margin-top:14px}
+.field-label:first-child{margin-top:0}
+input,select,textarea{width:100%;background:#0D1B33;border:1.5px solid rgba(77,143,255,.12);border-radius:10px;padding:12px 14px;font-family:inherit;font-size:15px;color:#E8F0FF;outline:none;display:block}
+textarea{resize:none;height:64px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+/* Buttons */
+.btn{width:100%;padding:14px;border-radius:12px;border:none;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer;margin-top:10px;display:block;color:#fff;background:linear-gradient(135deg,#2E86FF,#1A6FE8)}
+.btn-ghost{background:transparent;color:#4D6A99;border:1.5px solid rgba(77,143,255,.2)}
+.btn-danger{background:#FF3D71}
+
+/* GPS bar */
+.gps-bar{display:flex;align-items:center;gap:10px;padding:10px 14px;background:#0F1E38;border:1px solid rgba(77,143,255,.12);border-radius:16px;margin-bottom:12px;font-size:12px;color:#8BA3CC}
+.gps-dot{width:8px;height:8px;border-radius:50%;background:#FFAA00;flex-shrink:0}
+.gps-dot.good{background:#00D68F;box-shadow:0 0 8px #00D68F}
+.gps-dot.bad{background:#FF3D71}
+
+/* Vehicle chips */
+.chips{display:flex;gap:8px;overflow-x:auto;margin-bottom:16px;padding-bottom:4px}
+.chip{flex-shrink:0;background:#0F1E38;border:1.5px solid rgba(77,143,255,.12);border-radius:12px;padding:10px 14px;cursor:pointer;min-width:130px}
+.chip.selected{background:rgba(46,134,255,.12);border-color:#2E86FF}
+.chip-reg{font-family:monospace;font-size:14px;font-weight:600;letter-spacing:2px}
+.chip-model{font-size:12px;color:#4D6A99;margin-top:2px}
+.chip-odo{font-size:11px;color:#6BAEFF;margin-top:4px}
+
+/* Drive card */
+.drive-card{background:linear-gradient(135deg,#0F1E38,#162847);border:1px solid rgba(77,143,255,.15);border-radius:24px;padding:24px 20px;margin-bottom:16px;text-align:center}
+.status-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(0,0,0,.35);border-radius:20px;padding:5px 14px;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#2D4A77;margin-bottom:16px}
+.status-dot{width:7px;height:7px;border-radius:50%;background:#2D4A77}
+.status-badge.active{color:#00D68F}
+.status-badge.active .status-dot{background:#00D68F;box-shadow:0 0 8px #00D68F}
+.km-display{font-family:monospace;font-size:56px;font-weight:500;line-height:1;letter-spacing:-2px}
+.km-unit{font-size:20px;color:#4D6A99;letter-spacing:0}
+.timer{font-family:monospace;font-size:22px;color:#6BAEFF;margin-top:10px;letter-spacing:2px}
+.drive-hint{font-size:13px;color:#2D4A77;margin-top:8px}
+.stats-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:14px}
+.stat-box{background:rgba(0,0,0,.3);border-radius:10px;padding:8px 6px;text-align:center}
+.stat-val{font-family:monospace;font-size:16px;font-weight:500}
+.stat-lbl{font-size:10px;color:#2D4A77;margin-top:2px}
+.main-btn{width:116px;height:116px;border-radius:50%;border:none;margin:22px auto 0;display:block;cursor:pointer;font-family:inherit;font-size:17px;font-weight:800;color:#fff;background:linear-gradient(135deg,#00D68F,#00A870);box-shadow:0 0 32px rgba(0,214,143,.4)}
+.main-btn.stop{background:linear-gradient(135deg,#FF3D71,#CC2255);box-shadow:0 0 32px rgba(255,61,113,.4)}
+
+/* Vehicle list */
+.vehicle-row{display:flex;align-items:flex-start;gap:14px}
+.vehicle-icon{width:44px;height:44px;background:rgba(46,134,255,.1);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:22px}
+.vehicle-reg{font-family:monospace;font-size:18px;font-weight:600;letter-spacing:2px}
+.vehicle-sub{font-size:13px;color:#8BA3CC;margin-top:2px}
+.vehicle-meta{font-size:12px;color:#4D6A99;margin-top:6px}
+.del-btn{background:rgba(255,61,113,.1);border:none;border-radius:8px;padding:8px;cursor:pointer;color:#FF3D71;font-size:18px;flex-shrink:0}
+.empty{text-align:center;padding:60px 20px;color:#2D4A77}
+.empty-icon{font-size:48px;margin-bottom:12px;opacity:.4}
+
+/* Log cards */
+.log-header{display:flex;justify-content:space-between;margin-bottom:8px}
+.log-date{font-size:13px;color:#8BA3CC}
+.log-dist{font-family:monospace;font-size:14px;color:#6BAEFF;font-weight:600}
+.log-route{display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:14px}
+.log-tags{display:flex;gap:6px;flex-wrap:wrap}
+.tag{border-radius:6px;padding:3px 8px;font-size:11px}
+.filter-row{display:flex;gap:8px;margin-bottom:14px}
+.filter-chip{background:#0F1E38;border:1.5px solid rgba(77,143,255,.12);border-radius:20px;padding:6px 14px;font-size:12px;font-weight:700;color:#2D4A77;cursor:pointer}
+.filter-chip.active{background:rgba(46,134,255,.1);border-color:#2E86FF;color:#6BAEFF}
+.export-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px;background:rgba(46,134,255,.1);border:1.5px solid rgba(46,134,255,.2);border-radius:12px;color:#6BAEFF;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:12px}
+
+/* Modal */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.8);backdrop-filter:blur(6px);z-index:200;display:flex;align-items:flex-end;justify-content:center}
+.modal{background:#0D1B33;border:1px solid rgba(77,143,255,.12);border-radius:24px 24px 0 0;padding:20px 20px 36px;width:100%;max-width:480px;max-height:92vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.modal-title{font-size:20px;font-weight:800;margin-bottom:4px}
+.modal-sub{font-size:13px;color:#4D6A99;margin-bottom:18px}
+.summary-grid{background:#070F1E;border-radius:12px;padding:14px;margin-bottom:16px;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.summary-lbl{font-size:11px;color:#2D4A77}
+.summary-val{font-family:monospace;font-size:15px;margin-top:2px}
+
+/* Toast */
+#toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(10px);background:#0D1B33;border:1px solid rgba(77,143,255,.2);border-radius:20px;padding:10px 20px;font-size:13px;font-weight:600;white-space:nowrap;z-index:300;opacity:0;transition:all .3s;pointer-events:none}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.section-label{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#2D4A77;margin-bottom:8px}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="header">
+    <div class="header-sub">KÖRLOGG</div>
+    <div class="header-title" id="page-title">Körning</div>
+  </div>
+
+  <!-- DRIVE TAB -->
+  <div id="tab-drive" class="content tab active">
+    <div class="gps-bar"><div class="gps-dot" id="gps-dot"></div><span id="gps-txt">Tryck START – GPS startar automatiskt</span></div>
+    <div class="section-label">VÄLJ FORDON</div>
+    <div class="chips" id="chips"></div>
+    <div class="drive-card">
+      <div class="status-badge" id="status-badge"><div class="status-dot" id="status-dot"></div><span id="status-txt">REDO</span></div>
+      <div class="km-display" id="km-val">0.00<span class="km-unit"> km</span></div>
+      <div class="timer" id="timer" style="display:none">00:00:00</div>
+      <div class="drive-hint" id="drive-hint">Tryck START för att börja körningen</div>
+      <div class="stats-grid" id="stats-grid" style="display:none">
+        <div class="stat-box"><div class="stat-val" id="s-spd">0</div><div class="stat-lbl">km/h</div></div>
+        <div class="stat-box"><div class="stat-val" id="s-pts">0</div><div class="stat-lbl">GPS-pkt</div></div>
+        <div class="stat-box"><div class="stat-val" id="s-acc">–</div><div class="stat-lbl">Noggr.m</div></div>
+      </div>
+      <button class="main-btn" id="main-btn" onclick="toggleDrive()">START</button>
+    </div>
+    <div class="card">
+      <label class="field-label">FÖRARE</label>
+      <input type="text" id="driver-input" placeholder="Ditt namn">
+    </div>
+  </div>
+
+  <!-- VEHICLES TAB -->
+  <div id="tab-vehicles" class="content tab">
+    <div id="vehicles-list"></div>
+    <button class="btn" onclick="showAddVehicle()">+ Lägg till fordon</button>
+    <div id="add-vehicle-form" style="display:none">
+      <div class="card" style="background:#0A1628;margin-top:12px">
+        <div style="font-size:17px;font-weight:800;margin-bottom:16px">Nytt fordon</div>
+        <div class="grid2">
+          <div><label class="field-label">Reg.nr *</label><input id="v-reg" placeholder="ABC 123" style="text-transform:uppercase;font-family:monospace;letter-spacing:2px"></div>
+          <div><label class="field-label">Fordonstyp</label><select id="v-type"><option>Personbil</option><option>Lätt lastbil</option><option>Tung lastbil</option><option>Buss</option><option>Motorcykel</option></select></div>
+        </div>
+        <div class="grid2">
+          <div><label class="field-label">Märke *</label><input id="v-make" placeholder="Volvo"></div>
+          <div><label class="field-label">Modell *</label><input id="v-model" placeholder="XC60"></div>
+        </div>
+        <div class="grid2">
+          <div><label class="field-label">Årsmodell</label><input id="v-year" type="number" placeholder="2022"></div>
+          <div><label class="field-label">Bränsle</label><select id="v-fuel"><option>Bensin</option><option>Diesel</option><option>El</option><option>Hybrid</option><option>Gas</option></select></div>
+        </div>
+        <label class="field-label">Mätarställning (km) *</label>
+        <input id="v-odo" type="number" placeholder="85000">
+        <div style="font-size:11px;color:#2D4A77;margin-top:4px">Uppdateras automatiskt efter varje körning</div>
+        <label class="field-label">Ägare / Företag</label>
+        <input id="v-owner" placeholder="Företagets namn">
+        <button class="btn" onclick="addVehicle()" style="margin-top:16px">Spara fordon</button>
+        <button class="btn btn-ghost" onclick="hideAddVehicle()">Avbryt</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOGS TAB -->
+  <div id="tab-logs" class="content tab">
+    <button class="export-btn" onclick="exportCSV()">⬇ Exportera CSV (Skatteverket)</button>
+    <div class="filter-row">
+      <div class="filter-chip active" id="f-all" onclick="setFilter('all',this)">Alla</div>
+      <div class="filter-chip" id="f-business" onclick="setFilter('business',this)">Tjänst</div>
+      <div class="filter-chip" id="f-private" onclick="setFilter('private',this)">Privat</div>
+    </div>
+    <div id="logs-list"></div>
+  </div>
+
+  <nav class="nav">
+    <button class="nav-btn active" id="nav-drive" onclick="switchTab('drive')"><span class="nav-icon">▶</span>Körning</button>
+    <button class="nav-btn" id="nav-vehicles" onclick="switchTab('vehicles')"><span class="nav-icon">🚗</span>Fordon</button>
+    <button class="nav-btn" id="nav-logs" onclick="switchTab('logs')"><span class="nav-icon">📋</span>Körlogg</button>
+  </nav>
+</div>
+
+<!-- Stop modal -->
+<div class="modal-bg" id="stop-modal" style="display:none">
+  <div class="modal">
+    <div class="modal-title">Avsluta körning</div>
+    <div class="modal-sub">Uppgifter som krävs av Skatteverket</div>
+    <label class="field-label">Startplats *</label>
+    <input id="m-from" placeholder="Varifrån körde du?">
+    <label class="field-label">Destination *</label>
+    <input id="m-to" placeholder="Vart körde du?">
+    <label class="field-label">Ändamål *</label>
+    <select id="m-purpose"><option value="">Välj ändamål...</option><option value="business">Tjänstekörning</option><option value="private">Privat körning</option></select>
+    <label class="field-label">Ärendebeskrivning</label>
+    <textarea id="m-detail" placeholder="T.ex. kundmöte, lagerbesök..."></textarea>
+    <label class="field-label">Antal passagerare</label>
+    <input id="m-pass" type="number" placeholder="0" min="0">
+    <div class="summary-grid">
+      <div><div class="summary-lbl">Startmätare</div><div class="summary-val" id="sum-odo-start">–</div></div>
+      <div><div class="summary-lbl">Slutmätare</div><div class="summary-val" id="sum-odo-end">–</div></div>
+      <div><div class="summary-lbl">Distans</div><div class="summary-val" id="sum-dist">–</div></div>
+      <div><div class="summary-lbl">Tid</div><div class="summary-val" id="sum-time">–</div></div>
+    </div>
+    <button class="btn" onclick="saveTrip()">Spara körning</button>
+    <button class="btn btn-ghost" onclick="cancelStop()">Avbryt – fortsätt körning</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ── STATE ──────────────────────────────────────────────────────────
+var state = {
+  vehicles: JSON.parse(localStorage.getItem('kl_v')||'[]'),
+  trips:    JSON.parse(localStorage.getItem('kl_t')||'[]'),
+  selId:    null,
+  driving:  false,
+  wid:      null,
+  timer:    null,
+  t0:       null,
+  odo0:     0,
+  dist:     0,
+  secs:     0,
+  lp:       null,
+  filter:   'all'
+};
+
+function save(){
+  localStorage.setItem('kl_v', JSON.stringify(state.vehicles));
+  localStorage.setItem('kl_t', JSON.stringify(state.trips));
+}
+
+// ── INIT ───────────────────────────────────────────────────────────
+window.onload = function(){
+  var d = localStorage.getItem('kl_driver');
+  if(d) document.getElementById('driver-input').value = d;
+  if(state.vehicles.length) state.selId = state.vehicles[0].id;
+  renderChips();
+  renderVehicles();
+  renderLogs();
+};
+
+// ── TABS ───────────────────────────────────────────────────────────
+function switchTab(t){
+  ['drive','vehicles','logs'].forEach(function(id){
+    document.getElementById('tab-'+id).classList.toggle('active', id===t);
+    document.getElementById('nav-'+id).classList.toggle('active', id===t);
+  });
+  var titles = {drive:'Körning', vehicles:'Fordon', logs:'Körlogg'};
+  document.getElementById('page-title').textContent = titles[t];
+}
+
+// ── TOAST ──────────────────────────────────────────────────────────
+function toast(msg){
+  var el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(function(){ el.classList.remove('show'); }, 3000);
+}
+
+// ── GPS ────────────────────────────────────────────────────────────
+function setGPS(txt, cls){
+  document.getElementById('gps-txt').textContent = txt;
+  var dot = document.getElementById('gps-dot');
+  dot.className = 'gps-dot' + (cls ? ' '+cls : '');
+}
+
+function calcDist(a,b,c,d){
+  var R=6371, dL=(c-a)*Math.PI/180, dl=(d-b)*Math.PI/180;
+  var x = Math.sin(dL/2)*Math.sin(dL/2) + Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.sin(dl/2)*Math.sin(dl/2);
+  return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1-x));
+}
+
+function fmtTime(s){
+  return String(Math.floor(s/3600)).padStart(2,'0')+':'+String(Math.floor((s%3600)/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
+}
+
+// ── DRIVE ──────────────────────────────────────────────────────────
+function toggleDrive(){
+  if(!state.driving) startDrive(); else stopDrive();
+}
+
+function startDrive(){
+  if(!state.vehicles.length){ toast('Lägg till fordon först!'); switchTab('vehicles'); return; }
+  var driver = document.getElementById('driver-input').value.trim();
+  if(!driver){ toast('Ange ditt namn'); return; }
+  var v = state.vehicles.find(function(x){ return x.id===state.selId; });
+  if(!v){ toast('Välj ett fordon'); return; }
+  if(!navigator.geolocation){ toast('GPS saknas i denna webbläsare'); return; }
+
+  localStorage.setItem('kl_driver', driver);
+  state.dist=0; state.secs=0; state.lp=null; state.t0=new Date(); state.odo0=v.odometer;
+  state.driving=true;
+
+  // Update UI
+  document.getElementById('main-btn').textContent='STOP';
+  document.getElementById('main-btn').classList.add('stop');
+  document.getElementById('status-badge').classList.add('active');
+  document.getElementById('status-txt').textContent='KÖRNING PÅGÅR';
+  document.getElementById('drive-hint').style.display='none';
+  document.getElementById('timer').style.display='block';
+  document.getElementById('stats-grid').style.display='grid';
+  document.getElementById('km-val').innerHTML='0.00<span class="km-unit"> km</span>';
+
+  state.wid = navigator.geolocation.watchPosition(
+    function(pos){
+      var la=pos.coords.latitude, lo=pos.coords.longitude, ac=pos.coords.accuracy, spd=pos.coords.speed;
+      setGPS('GPS aktiv · '+Math.round(ac)+'m noggrannhet', ac<40?'good':'');
+      document.getElementById('s-acc').textContent = Math.round(ac);
+      document.getElementById('s-spd').textContent = spd ? Math.round(spd*3.6) : 0;
+      if(ac<=60){
+        if(state.lp){
+          var d=calcDist(state.lp[0],state.lp[1],la,lo);
+          if(d>0.005 && d<0.3){ state.dist+=d; document.getElementById('km-val').innerHTML=state.dist.toFixed(2)+'<span class="km-unit"> km</span>'; }
+        }
+        state.lp=[la,lo];
+        document.getElementById('s-pts').textContent = document.getElementById('s-pts').textContent*1+1;
+      }
+    },
+    function(e){
+      state.driving=false;
+      clearInterval(state.timer);
+      navigator.geolocation.clearWatch(state.wid);
+      resetDriveUI();
+      setGPS('GPS nekad – tillåt plats i Safari', 'bad');
+      toast('Tillåt plats för GPS!');
+    },
+    {enableHighAccuracy:true, maximumAge:2000, timeout:15000}
+  );
+
+  state.timer = setInterval(function(){
+    state.secs++;
+    document.getElementById('timer').textContent = fmtTime(state.secs);
+  }, 1000);
+
+  toast('Körning startad! 🚗');
+}
+
+function stopDrive(){
+  navigator.geolocation.clearWatch(state.wid);
+  clearInterval(state.timer);
+  state.driving=false;
+
+  // Fill modal
+  var v = state.vehicles.find(function(x){ return x.id===state.selId; });
+  document.getElementById('sum-odo-start').textContent = (state.odo0||0).toLocaleString('sv-SE')+' km';
+  document.getElementById('sum-odo-end').textContent   = (state.odo0+state.dist).toFixed(1)+' km';
+  document.getElementById('sum-dist').textContent      = state.dist.toFixed(2)+' km';
+  document.getElementById('sum-time').textContent      = fmtTime(state.secs);
+  document.getElementById('stop-modal').style.display  = 'flex';
+}
+
+function cancelStop(){
+  document.getElementById('stop-modal').style.display='none';
+  // Restart driving
+  state.driving=true;
+  state.timer = setInterval(function(){ state.secs++; document.getElementById('timer').textContent=fmtTime(state.secs); },1000);
+  state.wid = navigator.geolocation.watchPosition(
+    function(pos){
+      var la=pos.coords.latitude,lo=pos.coords.longitude,ac=pos.coords.accuracy,spd=pos.coords.speed;
+      setGPS('GPS aktiv · '+Math.round(ac)+'m', ac<40?'good':'');
+      document.getElementById('s-acc').textContent=Math.round(ac);
+      document.getElementById('s-spd').textContent=spd?Math.round(spd*3.6):0;
+      if(ac<=60){
+        if(state.lp){var d=calcDist(state.lp[0],state.lp[1],la,lo);if(d>0.005&&d<0.3){state.dist+=d;document.getElementById('km-val').innerHTML=state.dist.toFixed(2)+'<span class="km-unit"> km</span>';}}
+        state.lp=[la,lo];
+        document.getElementById('s-pts').textContent=document.getElementById('s-pts').textContent*1+1;
+      }
+    },
+    function(){},
+    {enableHighAccuracy:true,maximumAge:2000,timeout:15000}
+  );
+  document.getElementById('main-btn').textContent='STOP';
+  document.getElementById('main-btn').classList.add('stop');
+  document.getElementById('status-badge').classList.add('active');
+  document.getElementById('status-txt').textContent='KÖRNING PÅGÅR';
+}
+
+function saveTrip(){
+  var from    = document.getElementById('m-from').value.trim();
+  var to      = document.getElementById('m-to').value.trim();
+  var purpose = document.getElementById('m-purpose').value;
+  var detail  = document.getElementById('m-detail').value.trim();
+  var pass    = document.getElementById('m-pass').value;
+  var driver  = document.getElementById('driver-input').value.trim();
+  if(!from)   { toast('Ange startplats'); return; }
+  if(!to)     { toast('Ange destination'); return; }
+  if(!purpose){ toast('Välj ändamål'); return; }
+  var v = state.vehicles.find(function(x){ return x.id===state.selId; });
+  var d = parseFloat(state.dist.toFixed(2));
+  var odoEnd = parseFloat((state.odo0+d).toFixed(1));
+  var end = new Date();
+  var trip = {
+    id: Date.now().toString(),
+    date: state.t0.toLocaleDateString('sv-SE'),
+    startTime: state.t0.toLocaleTimeString('sv-SE',{hour:'2-digit',minute:'2-digit'}),
+    endTime: end.toLocaleTimeString('sv-SE',{hour:'2-digit',minute:'2-digit'}),
+    vehicleReg: v?v.reg:'–',
+    vehicleMake: v?(v.make+' '+v.model):'–',
+    driver: driver, from: from, to: to, purpose: purpose, purposeDetail: detail,
+    odoStart: state.odo0, odoEnd: odoEnd, distance: d, passengers: pass||'0'
+  };
+  state.trips.unshift(trip);
+  if(v){ v.odometer=odoEnd; }
+  save();
+  document.getElementById('stop-modal').style.display='none';
+  document.getElementById('m-from').value='';
+  document.getElementById('m-to').value='';
+  document.getElementById('m-purpose').value='';
+  document.getElementById('m-detail').value='';
+  document.getElementById('m-pass').value='';
+  resetDriveUI();
+  renderChips();
+  renderLogs();
+  toast('Körning sparad! '+d+' km ✅');
+}
+
+function resetDriveUI(){
+  document.getElementById('main-btn').textContent='START';
+  document.getElementById('main-btn').classList.remove('stop');
+  document.getElementById('status-badge').classList.remove('active');
+  document.getElementById('status-txt').textContent='REDO';
+  document.getElementById('drive-hint').style.display='block';
+  document.getElementById('timer').style.display='none';
+  document.getElementById('stats-grid').style.display='none';
+  document.getElementById('km-val').innerHTML='0.00<span class="km-unit"> km</span>';
+  state.dist=0; state.secs=0; state.driving=false;
+}
+
+// ── CHIPS ──────────────────────────────────────────────────────────
+function renderChips(){
+  var el = document.getElementById('chips');
+  if(!state.vehicles.length){
+    el.innerHTML='<div style="color:#2D4A77;font-size:13px;padding:4px 0">Inga fordon – lägg till under Fordon-fliken</div>';
+    return;
+  }
+  el.innerHTML = state.vehicles.map(function(v){
+    var sel = v.id===state.selId;
+    return '<div class="chip'+(sel?' selected':'')+'" onclick="selectVehicle(\''+v.id+'\')">'
+      +'<div class="chip-reg">'+v.reg+'</div>'
+      +'<div class="chip-model">'+v.make+' '+v.model+'</div>'
+      +'<div class="chip-odo">'+v.odometer.toLocaleString('sv-SE')+' km</div>'
+      +'</div>';
+  }).join('');
+}
+
+function selectVehicle(id){
+  if(state.driving){ toast('Kan ej byta fordon under körning'); return; }
+  state.selId=id; renderChips();
+}
+
+// ── VEHICLES ───────────────────────────────────────────────────────
+function renderVehicles(){
+  var el=document.getElementById('vehicles-list');
+  if(!state.vehicles.length){
+    el.innerHTML='<div class="empty"><div class="empty-icon">🚗</div><div style="font-size:15px">Inga fordon tillagda</div></div>';
+    return;
+  }
+  el.innerHTML=state.vehicles.map(function(v){
+    return '<div class="card"><div class="vehicle-row">'
+      +'<div class="vehicle-icon">🚗</div>'
+      +'<div style="flex:1">'
+        +'<div class="vehicle-reg">'+v.reg+'</div>'
+        +'<div class="vehicle-sub">'+v.make+' '+v.model+(v.year?' · '+v.year:'')+' · '+v.fuel+'</div>'
+        +'<div class="vehicle-meta">Mätare: <strong style="color:#8BA3CC">'+v.odometer.toLocaleString('sv-SE')+' km</strong>'+(v.owner?' · '+v.owner:'')+'</div>'
+      +'</div>'
+      +'<button class="del-btn" onclick="deleteVehicle(\''+v.id+'\')">🗑</button>'
+    +'</div></div>';
+  }).join('');
+}
+
+function showAddVehicle(){
+  document.getElementById('add-vehicle-form').style.display='block';
+  document.querySelector('#tab-vehicles > .btn').style.display='none';
+}
+
+function hideAddVehicle(){
+  document.getElementById('add-vehicle-form').style.display='none';
+  document.querySelector('#tab-vehicles > .btn').style.display='block';
+  ['v-reg','v-make','v-model','v-year','v-odo','v-owner'].forEach(function(id){ document.getElementById(id).value=''; });
+}
+
+function addVehicle(){
+  var reg   = document.getElementById('v-reg').value.trim().toUpperCase();
+  var make  = document.getElementById('v-make').value.trim();
+  var model = document.getElementById('v-model').value.trim();
+  var year  = document.getElementById('v-year').value;
+  var type  = document.getElementById('v-type').value;
+  var fuel  = document.getElementById('v-fuel').value;
+  var odo   = parseFloat(document.getElementById('v-odo').value);
+  var owner = document.getElementById('v-owner').value.trim();
+  if(!reg)  { toast('Ange registreringsnummer'); return; }
+  if(!make) { toast('Ange märke'); return; }
+  if(!model){ toast('Ange modell'); return; }
+  if(isNaN(odo)||odo<0){ toast('Ange mätarställning'); return; }
+  if(state.vehicles.find(function(v){ return v.reg===reg; })){ toast('Reg.nr finns redan'); return; }
+  var v={id:Date.now().toString(),reg:reg,make:make,model:model,year:year,type:type,fuel:fuel,odometer:odo,owner:owner};
+  state.vehicles.push(v);
+  if(!state.selId) state.selId=v.id;
+  save(); hideAddVehicle(); renderVehicles(); renderChips();
+  toast('Fordon tillagt! ✅');
+}
+
+function deleteVehicle(id){
+  if(state.driving&&state.selId===id){ toast('Kan ej ta bort fordon under körning'); return; }
+  if(!confirm('Ta bort fordonet?')) return;
+  state.vehicles=state.vehicles.filter(function(v){ return v.id!==id; });
+  if(state.selId===id) state.selId=state.vehicles.length?state.vehicles[0].id:null;
+  save(); renderVehicles(); renderChips();
+  toast('Fordon borttaget');
+}
+
+// ── LOGS ───────────────────────────────────────────────────────────
+function setFilter(f, el){
+  state.filter=f;
+  document.querySelectorAll('.filter-chip').forEach(function(c){ c.classList.remove('active'); });
+  el.classList.add('active');
+  renderLogs();
+}
+
+function renderLogs(){
+  var el=document.getElementById('logs-list');
+  var list = state.filter==='all' ? state.trips : state.trips.filter(function(t){ return t.purpose===state.filter; });
+  if(!list.length){
+    el.innerHTML='<div class="empty"><div class="empty-icon">📋</div><div>Inga körningar ännu</div></div>';
+    return;
+  }
+  el.innerHTML=list.map(function(t){
+    var pc = t.purpose==='business'?'#00D68F':'#FFAA00';
+    var pl = t.purpose==='business'?'Tjänst':'Privat';
+    var tags=[
+      [pl,pc],[t.vehicleReg,'#6BAEFF'],[t.driver,'#6BAEFF'],
+      [(t.odoStart||0).toLocaleString('sv-SE')+'→'+Math.round(t.odoEnd)+' km','#6BAEFF']
+    ];
+    if(t.purposeDetail) tags.push([t.purposeDetail,'#6BAEFF']);
+    return '<div class="card">'
+      +'<div class="log-header"><div class="log-date">'+t.date+' · '+t.startTime+'–'+t.endTime+'</div><div class="log-dist">'+t.distance.toFixed(2)+' km</div></div>'
+      +'<div class="log-route"><span style="flex:1">'+t.from+'</span><span style="color:#2D4A77">→</span><span style="flex:1;text-align:right">'+t.to+'</span></div>'
+      +'<div class="log-tags">'+tags.map(function(tg){ return '<span class="tag" style="background:'+tg[1]+'20;border:1px solid '+tg[1]+'35;color:'+tg[1]+'">'+tg[0]+'</span>'; }).join('')+'</div>'
+    +'</div>';
+  }).join('');
+}
+
+// ── EXPORT ─────────────────────────────────────────────────────────
+function exportCSV(){
+  if(!state.trips.length){ toast('Inga körningar att exportera'); return; }
+  var H=['Datum','Starttid','Sluttid','Förare','Reg.nr','Fordon','Från','Till','Ändamål','Beskrivning','Mätare start','Mätare slut','Distans km','Passagerare'];
+  var R=state.trips.map(function(t){ return [t.date,t.startTime,t.endTime,t.driver,t.vehicleReg,t.vehicleMake,t.from,t.to,t.purpose==='business'?'Tjänstekörning':'Privat',t.purposeDetail||'',t.odoStart,t.odoEnd,t.distance,t.passengers]; });
+  var csv=[H].concat(R).map(function(r){ return r.map(function(c){ return '"'+String(c).replace(/"/g,'""')+'"'; }).join(';'); }).join('\n');
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'}));
+  a.download='korlogg_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+  toast('CSV exporterad! ✅');
+}
+</script>
+</body>
+</html>
